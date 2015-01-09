@@ -145,6 +145,13 @@ typedef NS_ENUM(NSUInteger, FLEXExplorerMode) {
     UIViewController *viewControllerToAsk = [self viewControllerForStatusBarAndOrientationProperties];
     UIStatusBarStyle preferredStyle = UIStatusBarStyleDefault;
     if (viewControllerToAsk && viewControllerToAsk != self) {
+        // We might need to foward to a child
+        UIViewController *childViewControllerToAsk = [viewControllerToAsk childViewControllerForStatusBarStyle];
+        while (childViewControllerToAsk && childViewControllerToAsk != viewControllerToAsk) {
+            viewControllerToAsk = childViewControllerToAsk;
+            childViewControllerToAsk = [viewControllerToAsk childViewControllerForStatusBarStyle];
+        }
+        
         preferredStyle = [viewControllerToAsk preferredStatusBarStyle];
     }
     return preferredStyle;
@@ -165,6 +172,13 @@ typedef NS_ENUM(NSUInteger, FLEXExplorerMode) {
     UIViewController *viewControllerToAsk = [self viewControllerForStatusBarAndOrientationProperties];
     BOOL prefersHidden = NO;
     if (viewControllerToAsk && viewControllerToAsk != self) {
+        // Again, we might need to forward to a child
+        UIViewController *childViewControllerToAsk = [viewControllerToAsk childViewControllerForStatusBarHidden];
+        while (childViewControllerToAsk && childViewControllerToAsk != viewControllerToAsk) {
+            viewControllerToAsk = childViewControllerToAsk;
+            childViewControllerToAsk = [viewControllerToAsk childViewControllerForStatusBarHidden];
+        }
+        
         prefersHidden = [viewControllerToAsk prefersStatusBarHidden];
     }
     return prefersHidden;
@@ -580,7 +594,11 @@ typedef NS_ENUM(NSUInteger, FLEXExplorerMode) {
 {
     // Only if we're in selection mode
     if (self.currentMode == FLEXExplorerModeSelect && tapGR.state == UIGestureRecognizerStateRecognized) {
-        [self updateOutlineViewsForSelectionPoint:[tapGR locationInView:nil]];
+        // Note that [tapGR locationInView:nil] is broken in iOS 8, so we have to do a two step conversion to window coordinates.
+        // Thanks to @lascorbe for finding this: https://github.com/Flipboard/FLEX/pull/31
+        CGPoint tapPointInView = [tapGR locationInView:self.view];
+        CGPoint tapPointInWindow = [self.view convertPoint:tapPointInView toView:nil];
+        [self updateOutlineViewsForSelectionPoint:tapPointInWindow];
     }
 }
 
